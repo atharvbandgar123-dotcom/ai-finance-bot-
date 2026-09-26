@@ -1,2 +1,4 @@
 # ai-finance-bot-
-https://github.com/atharvbandgar123-dotcom/ai-finance-bot-.git
+Here's the link:
+
+https://claude.ai/artifact/QHZMAkUYt6eG8BcLX9fTwU
