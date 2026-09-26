@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ledger — Personal Finance Advisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Slab:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1F2A24; --paper:#F1ECDE; --card:#FBF8F0; --line:#D7CDAE;
+    --sage:#5C6B52; --gold:#AD7F26; --rust:#9C4A32; --shadow:rgba(31,42,36,.08);
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --ink:#EDE7D6; --paper:#141C17; --card:#1B251E; --line:#33402F;
+      --sage:#9CB08C; --gold:#D9A94A; --rust:#C97A5D; --shadow:rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EDE7D6; --paper:#141C17; --card:#1B251E; --line:#33402F;
+    --sage:#9CB08C; --gold:#D9A94A; --rust:#C97A5D; --shadow:rgba(0,0,0,.35);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); height:100%; }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    display:flex; flex-direction:column;
+  }
+  .num{ font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .slab{ font-family:'IBM Plex Slab', serif; }
+
+  header{
+    position:sticky; top:0; z-index:5;
+    padding: calc(14px + env(safe-area-inset-top,0px)) 20px 14px;
+    background:var(--paper); border-bottom:1px solid var(--line);
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  }
+  header .brand{ display:flex; align-items:baseline; gap:10px; }
+  header h1{ font-family:'IBM Plex Slab', serif; font-weight:700; font-size:1.25rem; margin:0; letter-spacing:.2px; }
+  header .tag{ font-size:.8rem; color:var(--sage); }
+  header button{
+    background:none; border:1px solid var(--line); color:var(--sage);
+    font-family:'IBM Plex Sans'; font-size:.78rem; padding:6px 10px; border-radius:3px;
+    cursor:pointer;
+  }
+  header button:hover{ border-color:var(--rust); color:var(--rust); }
+
+  .layout{
+    flex:1; min-height:0; display:grid;
+    grid-template-columns: 300px 1fr;
+  }
+  @media (max-width: 760px){
+    .layout{ grid-template-columns: 1fr; }
+    aside{ order:2; }
+    aside.open{ max-height:900px; }
+    aside{ max-height:0; overflow:hidden; transition:max-height .3s ease; border-bottom:1px solid var(--line); }
+    .sidebar-toggle{ display:flex; }
+  }
+  .sidebar-toggle{
+    display:none; width:100%; justify-content:space-between; align-items:center;
+    padding:12px 20px; background:var(--card); border:none; border-bottom:1px solid var(--line);
+    color:var(--ink); font-family:'IBM Plex Sans'; font-size:.85rem; cursor:pointer;
+  }
+  .sidebar-toggle .arrow{ transition: transform .2s ease; }
+  .sidebar-toggle.open .arrow{ transform: rotate(180deg); }
+
+  aside{
+    background:var(--card); border-right:1px solid var(--line);
+    padding:18px 20px 24px; overflow-y:auto;
+  }
+  .tally{ border:1px solid var(--line); border-radius:4px; padding:14px 14px 6px; margin-bottom:20px; background:var(--paper); }
+  .tally-row{ display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px dashed var(--line); font-size:.88rem; }
+  .tally-row:last-child{ border-bottom:none; }
+  .tally-row .lbl{ color:var(--sage); }
+  .tally-row .val{ font-weight:600; }
+  .tally-row.total .val{ font-size:1.05rem; }
+  .tally-row.pos .val{ color:var(--gold); }
+  .tally-row.neg .val{ color:var(--rust); }
+
+  .section-title{ font-size:.72rem; text-transform:none; color:var(--sage); margin:0 0 10px; font-weight:600; }
+  .cats{ margin-bottom:22px; }
+  .cat-row{ margin-bottom:9px; }
+  .cat-row .top{ display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:4px; }
+  .cat-bar{ height:5px; background:var(--line); border-radius:3px; overflow:hidden; }
+  .cat-bar > i{ display:block; height:100%; background:var(--gold); border-radius:3px; transition:width .5s ease; }
+  .cats .empty{ font-size:.82rem; color:var(--sage); font-style:italic; }
+
+  .goal-card{ border:1px solid var(--line); border-radius:4px; padding:12px 14px; background:var(--paper); }
+  .goal-card .top{ display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:6px; }
+  .goal-bar{ height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+  .goal-bar > i{ display:block; height:100%; background:var(--sage); border-radius:3px; transition:width .5s ease; }
+  .goal-card .note{ font-size:.78rem; color:var(--sage); }
+  .goal-empty{ font-size:.82rem; color:var(--sage); font-style:italic; }
+
+  .chat-col{ display:flex; flex-direction:column; min-height:0; }
+  .thread{ flex:1; overflow-y:auto; padding:18px 22px 10px; }
+  .entry{ display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); animation: rise .28s ease both; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(5px);} to{ opacity:1; transform:translateY(0);} }
+  .entry .idx{ font-size:.72rem; color:var(--line); width:34px; flex:0 0 auto; padding-top:2px; }
+  .entry .body{ flex:1; min-width:0; }
+  .entry .who{ font-size:.72rem; color:var(--sage); margin-bottom:3px; }
+  .entry.user .who{ color:var(--rust); }
+  .entry .msg{ white-space:pre-wrap; line-height:1.5; font-size:.94rem; max-width:70ch; }
+  .entry.typing .msg{ color:var(--sage); }
+  .dots span{ display:inline-block; width:5px; height:5px; margin-right:3px; border-radius:50%; background:var(--sage); animation:blink 1.2s infinite ease-in-out; }
+  .dots span:nth-child(2){ animation-delay:.2s; } .dots span:nth-child(3){ animation-delay:.4s; }
+  @keyframes blink{ 0%,80%,100%{ opacity:.25;} 40%{ opacity:1;} }
+
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; padding:0 22px 10px; }
+  .chip{ font-size:.78rem; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:14px; padding:6px 12px; cursor:pointer; font-family:'IBM Plex Sans'; }
+  .chip:hover{ border-color:var(--gold); }
+
+  form.composer{
+    display:flex; gap:10px; padding:12px 22px calc(14px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid var(--line); background:var(--paper);
+  }
+  form.composer input{
+    flex:1; font-family:'IBM Plex Sans'; font-size:.95rem; padding:11px 13px;
+    border:1px solid var(--line); border-radius:4px; background:var(--card); color:var(--ink);
+  }
+  form.composer input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  form.composer button{
+    font-family:'IBM Plex Sans'; font-weight:600; font-size:.88rem; padding:0 18px;
+    background:var(--ink); color:var(--paper); border:none; border-radius:4px; cursor:pointer;
+  }
+  form.composer button:disabled{ opacity:.5; cursor:default; }
+  form.composer button:not(:disabled):hover{ background:var(--gold); }
+
+  .banner{ margin:14px 22px; padding:10px 12px; border:1px solid var(--rust); color:var(--rust); font-size:.85rem; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="slab" style="font-size:1.3rem;">📒</span>
+    <div>
+      <h1>Ledger</h1>
+      <div class="tag">a capstone finance advisor</div>
+    </div>
+  </div>
+  <button id="newMonthBtn" title="Clear recorded expenses and start a fresh page">New month</button>
+</header>
+
+<button class="sidebar-toggle" id="sidebarToggle">
+  <span>View summary</span>
+  <span class="arrow">▾</span>
+</button>
+
+<div class="layout">
+  <aside id="aside">
+    <div class="tally">
+      <div class="tally-row"><span class="lbl">Income</span><span class="val num" id="tIncome">₹ —</span></div>
+      <div class="tally-row"><span class="lbl">Expenses</span><span class="val num" id="tExpenses">₹ 0</span></div>
+      <div class="tally-row total" id="tBalanceRow"><span class="lbl">Balance</span><span class="val num" id="tBalance">₹ —</span></div>
+      <div class="tally-row"><span class="lbl">Savings rate</span><span class="val num" id="tRate">—</span></div>
+    </div>
+
+    <div class="cats">
+      <p class="section-title">Expense breakdown</p>
+      <div id="catList"><p class="empty">No expenses recorded yet.</p></div>
+    </div>
+
+    <div>
+      <p class="section-title">Savings goal</p>
+      <div id="goalBox"><p class="goal-empty">No goal set yet — tell Ledger what you're saving for.</p></div>
+    </div>
+  </aside>
+
+  <section class="chat-col">
+    <div class="thread" id="thread"></div>
+    <div class="chips" id="chips">
+      <button class="chip" data-msg="Can you give me a monthly financial report?">📊 Monthly report</button>
+      <button class="chip" data-msg="I'd like to set a savings goal.">🎯 Set a savings goal</button>
+      <button class="chip" data-msg="Any tips to reduce my spending?">💡 Saving tips</button>
+    </div>
+    <div id="bannerHost"></div>
+    <form class="composer" id="composer">
+      <input id="input" type="text" autocomplete="off" placeholder="Tell Ledger about your income or an expense…" />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+  </section>
+</div>
+
+<script>
+const CATEGORY_ICONS = {
+  Food:'🍔', Transport:'🚗', Education:'📚', Shopping:'🛍️', Entertainment:'🎬',
+  'Rent/Hostel':'🏠', Bills:'💡', Healthcare:'🏥', Travel:'✈️', Other:'📦'
+};
+const CATEGORY_LIST = Object.keys(CATEGORY_ICONS);
+
+const els = {
+  thread: document.getElementById('thread'),
+  form: document.getElementById('composer'),
+  input: document.getElementById('input'),
+  sendBtn: document.getElementById('sendBtn'),
+  aside: document.getElementById('aside'),
+  toggle: document.getElementById('sidebarToggle'),
+  newMonth: document.getElementById('newMonthBtn'),
+  chips: document.getElementById('chips'),
+  bannerHost: document.getElementById('bannerHost'),
+  tIncome: document.getElementById('tIncome'),
+  tExpenses: document.getElementById('tExpenses'),
+  tBalance: document.getElementById('tBalance'),
+  tBalanceRow: document.getElementById('tBalanceRow'),
+  tRate: document.getElementById('tRate'),
+  catList: document.getElementById('catList'),
+  goalBox: document.getElementById('goalBox'),
+};
+
+let state = { income: null, expenses: {}, savingsGoal: null, history: [] };
+let entryCount = 0;
+let sample = null;
+
+function inr(n){
+  if (n === null || n === undefined || isNaN(n)) return '₹ —';
+  return '₹ ' + Math.round(n).toLocaleString('en-IN');
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem('ledger_state_v1');
+    if (raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign(state, parsed);
+    }
+  }catch(e){ /* ignore, start fresh */ }
+}
+function saveState(){
+  try{ localStorage.setItem('ledger_state_v1', JSON.stringify(state)); }catch(e){}
+}
+
+function totalExpenses(){
+  return Object.values(state.expenses).reduce((a,b)=>a+b, 0);
+}
+
+function renderSummary(){
+  els.tIncome.textContent = state.income ? inr(state.income) : '₹ —';
+  const exp = totalExpenses();
+  els.tExpenses.textContent = inr(exp);
+  if (state.income){
+    const bal = state.income - exp;
+    els.tBalance.textContent = inr(bal);
+    els.tBalanceRow.className = 'tally-row total ' + (bal >= 0 ? 'pos' : 'neg');
+    const rate = state.income > 0 ? Math.max(0, (bal/state.income)*100) : 0;
+    els.tRate.textContent = bal >= 0 ? rate.toFixed(0) + '%' : '—';
+  } else {
+    els.tBalance.textContent = '₹ —';
+    els.tRate.textContent = '—';
+    els.tBalanceRow.className = 'tally-row total';
+  }
+
+  const cats = Object.entries(state.expenses).filter(([,v]) => v > 0);
+  if (!cats.length){
+    els.catList.innerHTML = '<p class="empty">No expenses recorded yet.</p>';
+  } else {
+    const max = Math.max(...cats.map(([,v])=>v));
+    els.catList.innerHTML = cats
+      .sort((a,b)=>b[1]-a[1])
+      .map(([cat, amt]) => `
+        <div class="cat-row">
+          <div class="top"><span>${CATEGORY_ICONS[cat]||'📦'} ${cat}</span><span class="num">${inr(amt)}</span></div>
+          <div class="cat-bar"><i style="width:${max? (amt/max*100):0}%"></i></div>
+        </div>`).join('');
+  }
+
+  if (state.savingsGoal && state.savingsGoal.target){
+    const g = state.savingsGoal;
+    const pct = Math.min(100, (g.saved / g.target) * 100 || 0);
+    const remaining = Math.max(0, g.target - g.saved);
+    const perMonth = g.months > 0 ? remaining / g.months : remaining;
+    els.goalBox.innerHTML = `
+      <div class="goal-card">
+        <div class="top"><span>${inr(g.saved)} of ${inr(g.target)}</span><span class="num">${pct.toFixed(0)}%</span></div>
+        <div class="goal-bar"><i style="width:${pct}%"></i></div>
+        <div class="note">≈ ${inr(perMonth)} / month${g.months ? ' for ' + g.months + ' months' : ''}</div>
+      </div>`;
+  } else {
+    els.goalBox.innerHTML = '<p class="goal-empty">No goal set yet — tell Ledger what you\'re saving for.</p>';
+  }
+}
+
+function addEntry(who, text, opts={}){
+  entryCount++;
+  const div = document.createElement('div');
+  div.className = 'entry ' + (who === 'You' ? 'user' : 'bot') + (opts.typing ? ' typing' : '');
+  div.id = opts.id || '';
+  const idx = String(entryCount).padStart(4,'0');
+  div.innerHTML = `
+    <div class="idx num">${idx}</div>
+    <div class="body">
+      <div class="who">${who}</div>
+      <div class="msg">${opts.typing ? '<span class="dots"><span></span><span></span><span></span></span>' : escapeHtml(text)}</div>
+    </div>`;
+  els.thread.appendChild(div);
+  els.thread.scrollTop = els.thread.scrollHeight;
+  return div;
+}
+function escapeHtml(s){
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function buildPrompt(userMsg){
+  const stateSummary = {
+    income: state.income,
+    expenses: state.expenses,
+    savingsGoal: state.savingsGoal
+  };
+  const historyText = state.history.slice(-12).map(h => `${h.role === 'user' ? 'User' : 'Ledger'}: ${h.text}`).join('\n');
+  return `You are "Ledger", a warm, encouraging personal finance advisor bot built for a student's course capstone project. Users are typically in India, so use ₹ (Indian Rupees) formatting in your reply text when you mention amounts.
+
+FIXED EXPENSE CATEGORIES (use exactly these names): ${CATEGORY_LIST.join(', ')}.
+
+BEHAVIOUR:
+- Ask for monthly income first if you don't have it yet.
+- Record expenses the user mentions, categorizing them into one of the fixed categories.
+- Help build a simple budget; you may suggest the 50/30/20 rule (needs/wants/savings) loosely, adapted to their real numbers — never force it.
+- Help set and track savings goals (target amount, amount already saved, months to reach it).
+- When asked for a "report" or "summary", write a clear, structured plain-text monthly report using the current state (income, total expenses, balance, category breakdown, one or two insights, a suggested savings amount). Do not use markdown symbols like # or **; use plain text, line breaks and emoji instead.
+- Never invent numbers the user hasn't given you. If something is missing, ask for it.
+- Be supportive and never judgmental about spending. Ask at most one or two questions at a time.
+- For investment, loan, tax, or insurance questions, explain briefly and remind the user to consult a qualified financial professional; never guarantee returns.
+- Keep replies concise (usually under 120 words) unless a report is requested.
+
+CURRENT RECORDED STATE (context only — do not dump this back verbatim):
+${JSON.stringify(stateSummary)}
+
+RECENT CONVERSATION:
+${historyText}
+User: ${userMsg}
+
+Respond with STRICT JSON ONLY (no markdown fences, no commentary outside the JSON) in exactly this shape:
+{"reply": "plain text reply to show the user", "income": number|null, "expenseUpdates": [{"category":"one of the fixed categories","amount":number}], "savingsGoal": {"target":number,"saved":number,"months":number}|null, "resetExpenses": boolean}
+
+Rules for the fields:
+- "income": a number ONLY if the user just stated or changed their monthly income this turn, otherwise null.
+- "expenseUpdates": ONLY new expense amounts mentioned in the user's latest message; these will be ADDED to that category's running total. Empty array if none.
+- "savingsGoal": the full object ONLY if the user set or updated a goal this turn, otherwise null.
+- "resetExpenses": true only if the user explicitly asked to reset, clear, or start a new month.`;
+}
+
+async function sendMessage(text){
+  state.history.push({role:'user', text});
+  addEntry('You', text);
+  els.input.value = '';
+  els.sendBtn.disabled = true;
+
+  const typingEl = addEntry('Ledger', '', {typing:true, id:'typing-now'});
+
+  if (!sample){
+    typingEl.remove();
+    addEntry('Ledger', "I can't reach the AI service in this view right now, so I can't respond. Your data is still saved locally — please try reopening this page.");
+    els.sendBtn.disabled = false;
+    return;
+  }
+
+  try{
+    const prompt = buildPrompt(text);
+    const result = await sample.json(prompt, { modelTier: 'default', cache: false });
+    typingEl.remove();
+
+    if (result.income) state.income = result.income;
+    if (Array.isArray(result.expenseUpdates)){
+      result.expenseUpdates.forEach(u => {
+        if (u && u.category && CATEGORY_LIST.includes(u.category) && typeof u.amount === 'number'){
+          state.expenses[u.category] = (state.expenses[u.category] || 0) + u.amount;
+        }
+      });
+    }
+    if (result.resetExpenses) state.expenses = {};
+    if (result.savingsGoal) state.savingsGoal = result.savingsGoal;
+
+    const replyText = result.reply || "Got it.";
+    state.history.push({role:'assistant', text: replyText});
+    addEntry('Ledger', replyText);
+    renderSummary();
+    saveState();
+  } catch(err){
+    typingEl.remove();
+    addEntry('Ledger', "Sorry, something went wrong on my end reading that. Could you try rephrasing?");
+    console.error('Ledger sample error', err);
+  } finally {
+    els.sendBtn.disabled = false;
+    els.input.focus();
+  }
+}
+
+els.form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = els.input.value.trim();
+  if (!text) return;
+  sendMessage(text);
+});
+
+els.chips.addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip');
+  if (!btn) return;
+  sendMessage(btn.dataset.msg);
+});
+
+els.toggle.addEventListener('click', () => {
+  els.aside.classList.toggle('open');
+  els.toggle.classList.toggle('open');
+});
+
+els.newMonth.addEventListener('click', () => {
+  if (!confirm('Start a new month? This clears recorded expenses (income and savings goal are kept).')) return;
+  state.expenses = {};
+  renderSummary();
+  saveState();
+  addEntry('Ledger', "Fresh page started 📖 Your expenses are cleared for the new month — income and savings goal are still here.");
+});
+
+async function init(){
+  loadState();
+  renderSummary();
+
+  try{
+    sample = await claude.use('sample');
+  }catch(e){ sample = null; }
+
+  if (state.history.length){
+    state.history.forEach(h => addEntry(h.role === 'user' ? 'You' : 'Ledger', h.text));
+  } else {
+    const welcome = "Hi, I'm Ledger 👋 I'll help you track income, log expenses, build a simple budget, and work toward savings goals.\n\nTo start — what's your monthly income?";
+    state.history.push({role:'assistant', text: welcome});
+    addEntry('Ledger', welcome);
+    saveState();
+  }
+
+  if (!sample){
+    const b = document.createElement('div');
+    b.className = 'banner';
+    b.textContent = "AI features aren't available in this view, so Ledger can't reply right now — your entries are still saved locally.";
+    els.bannerHost.appendChild(b);
+  }
+}
+init();
+</script>
+</body>
+</html>
